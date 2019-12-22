@@ -4,7 +4,6 @@ import { OrbitControls } from '../vendor/three.js-master/examples/jsm/controls/O
 import { FBXLoader } from '../vendor/three.js-master/examples/jsm/loaders/FBXLoader.js';
 
 (function() {
-// Set our main variables
     let scene,
         renderer,
         camera,
@@ -22,6 +21,8 @@ import { FBXLoader } from '../vendor/three.js-master/examples/jsm/loaders/FBXLoa
 })();
 
 function init() {
+    const MODEL_PATH = 'https://s3-us-west-2.amazonaws.com/s.cdpn.io/1376484/stacy_lightweight.glb';
+
     const canvas = document.querySelector('#c');
     const backgroundColor = 0xf1f1f1;
 
@@ -44,6 +45,30 @@ function init() {
     camera.position.x = 0;
     camera.position.y = -3;
 
+    var loader = new THREE.GLTFLoader();
+    loader.load(
+        MODEL_PATH,
+        function(g) {
+            // A lot is going to happen here
+            model = g.scene;
+            let fileAnimations = g.animations;
+
+            scene.add(model);
+            model.traverse(o => {
+                if (o.isMesh) {
+                    o.castShadow = true;
+                    o.receiveShadow = true;
+                }
+            });
+            model.scale.set(7, 7, 7);
+            model.position.y = -11;
+
+        },
+        undefined, // We don't need this function
+        function(error) {
+            console.error(error);
+        }
+    );
 
     //Hemisphere light
     let hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.61);
@@ -82,8 +107,28 @@ function init() {
 }
 
 function update() {
+    if (resizeRendererToDisplaySize(renderer)) {
+        const canvas = renderer.domElement;
+        camera.aspect = canvas.clientWidth / canvas.clientHeight;
+        camera.updateProjectionMatrix();
+    }
     renderer.render(scene, camera);
     requestAnimationFrame(update);
+}
+
+function resizeRendererToDisplaySize(renderer) {
+    const canvas = renderer.domElement;
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+    let canvasPixelWidth = canvas.width / window.devicePixelRatio;
+    let canvasPixelHeight = canvas.height / window.devicePixelRatio;
+
+    const needResize =
+        canvasPixelWidth !== width || canvasPixelHeight !== height;
+    if (needResize) {
+        renderer.setSize(width, height, false);
+    }
+    return needResize;
 }
 
 init();
