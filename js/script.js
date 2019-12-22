@@ -13,7 +13,8 @@
         raycaster = new THREE.Raycaster(),
         loaderAnim = document.getElementById('js-loader');
 
-})();
+
+init();
 
 function init() {
     const MODEL_PATH = 'https://s3-us-west-2.amazonaws.com/s.cdpn.io/1376484/stacy_lightweight.glb';
@@ -50,7 +51,19 @@ function init() {
 
             scene.add(model);
             loaderAnim.remove();
+
             mixer = new THREE.AnimationMixer(model);
+
+            let clips = fileAnimations.filter(val => val.name !== 'idle');
+            possibleAnims = clips.map(val => {
+                    let clip = THREE.AnimationClip.findByName(clips, val.name);
+                    clip.tracks.splice(3, 3);
+                    clip.tracks.splice(9, 3);
+                    clip = mixer.clipAction(clip);
+                    return clip;
+                }
+            );
+
             let idleAnim = THREE.AnimationClip.findByName(fileAnimations, 'idle');
             idleAnim.tracks.splice(3, 3);
             idleAnim.tracks.splice(9, 3);
@@ -144,6 +157,54 @@ function resizeRendererToDisplaySize(renderer) {
     return needResize;
 }
 
+window.addEventListener('click', e => raycast(e));
+window.addEventListener('touchend', e => raycast(e, true));
+
+function raycast(e, touch = false) {
+    var mouse = {};
+    if (touch) {
+        mouse.x = 2 * (e.changedTouches[0].clientX / window.innerWidth) - 1;
+        mouse.y = 1 - 2 * (e.changedTouches[0].clientY / window.innerHeight);
+    } else {
+        mouse.x = 2 * (e.clientX / window.innerWidth) - 1;
+        mouse.y = 1 - 2 * (e.clientY / window.innerHeight);
+    }
+    // update the picking ray with the camera and mouse position
+    raycaster.setFromCamera(mouse, camera);
+
+    // calculate objects intersecting the picking ray
+    var intersects = raycaster.intersectObjects(scene.children, true);
+
+    if (intersects[0]) {
+        var object = intersects[0].object;
+
+        if (object.name === 'stacy') {
+
+            if (!currentlyAnimating) {
+                currentlyAnimating = true;
+                playOnClick();
+            }
+        }
+    }
+}
+
+function playOnClick() {
+    let anim = Math.floor(Math.random() * possibleAnims.length) + 0;
+    playModifierAnimation(idle, 0.25, possibleAnims[anim], 0.25);
+}
+
+function playModifierAnimation(from, fSpeed, to, tSpeed) {
+    to.setLoop(THREE.LoopOnce);
+    to.reset();
+    to.play();
+    from.crossFadeTo(to, fSpeed, true);
+    setTimeout(function() {
+        from.enabled = true;
+        to.crossFadeTo(from, tSpeed, true);
+        currentlyAnimating = false;
+    }, to._clip.duration * 1000 - ((tSpeed + fSpeed) * 1000));
+}
+
 document.addEventListener('mousemove', function(e) {
     var mousecoords = getMousePos(e);
     if (neck && waist) {
@@ -202,4 +263,5 @@ function getMouseDegrees(x, y, degreeLimit) {
     }
     return { x: dx, y: dy };
 }
-init();
+
+})();
